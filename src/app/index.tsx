@@ -1,98 +1,108 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import {
+  SafeAreaView,
+  View,
+  TouchableOpacity,
+  Text,
+  Platform,
+  StatusBar as RNStatusBar,
+  StyleSheet,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useProductos } from '../hooks/useProductos';
+import { useMovimientos } from '../hooks/useMovimientos';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import PantallaInventario from '../ui/PantallaInventario';
+import PantallaProducto from '../ui/PantallaProducto';
+import PantallaAlertas from '../ui/PantallaAlertas';
+import PantallaMovimientos from '../ui/PantallaMovimientos';
+import PantallaReportes from '../ui/PantallaReportes';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+export default function App() {
+  const hookProductos = useProductos();
+  const hookMovimientos = useMovimientos();
+
+  const [pantalla, setPantalla] = useState('inventario');
+  const [productoEditar, setProductoEditar] = useState<any>(null);
+
+  const abrirFormulario = (producto: any = null) => {
+    setProductoEditar(producto);
+    setPantalla('formulario');
+  };
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+    <SafeAreaView style={styles.safe}>
+      <StatusBar style="dark" />
+      <View style={styles.contenido}>
+        {pantalla === 'inventario' && (
+          <PantallaInventario hookProductos={hookProductos} irAFormulario={abrirFormulario} />
+        )}
+        {pantalla === 'formulario' && (
+          <PantallaProducto
+            productoEditar={productoEditar}
+            hookProductos={hookProductos}
+            volver={() => setPantalla('inventario')}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+        )}
+        {pantalla === 'alertas' && <PantallaAlertas hookProductos={hookProductos} />}
+        {pantalla === 'movimientos' && (
+          <PantallaMovimientos hookProductos={hookProductos} hookMovimientos={hookMovimientos} />
+        )}
+        {pantalla === 'reportes' && <PantallaReportes hookMovimientos={hookMovimientos} />}
+      </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      {pantalla !== 'formulario' && (
+        <View style={styles.navbar}>
+          {[
+            { id: 'inventario', label: '📦 Inventario' },
+            { id: 'alertas', label: '🔔 Alertas' },
+            { id: 'movimientos', label: '💵 Caja' },
+            { id: 'reportes', label: '📊 Reportes' },
+          ].map((tab) => {
+            const activo = pantalla === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.navBtn, activo && styles.navBtnActivo]}
+                onPress={() => setPantalla(tab.id)}
+              >
+                <Text style={[styles.navText, activo && styles.navActivo]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight || 24) : 0,
+  },
+  contenido: { flex: 1 },
+  navbar: {
     flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 10,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
   },
-  safeArea: {
+  navBtn: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginHorizontal: 4,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  navBtnActivo: {
+    backgroundColor: '#eff6ff',
   },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  navText: { color: '#64748b', fontWeight: '600', fontSize: 13 },
+  navActivo: { color: '#2563eb', fontWeight: 'bold' },
 });
